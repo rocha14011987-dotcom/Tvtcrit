@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner EV+ | Triangulação de Odds & Dados</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent-blue: #2563eb;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-light); padding: 20px; line-height: 1.5; }
+
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid var(--accent-blue); padding-bottom: 15px; }
+        header h1 { font-size: 1.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+        header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 5px; }
+
+        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: var(--accent-blue); text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
+        .form-group input, .form-group select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 5px; font-size: 0.9rem; }
+        .form-group input:focus, .form-group select:focus { outline: 1px solid var(--accent-blue); }
+
+        .quick-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .btn-link { background: #334155; color: #fff; text-decoration: none; padding: 8px 12px; border-radius: 5px; font-size: 0.8rem; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-link:hover { background: var(--accent-blue); }
+
+        .checklist-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border-color); }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 3px; cursor: pointer; }
+        .item-text strong { display: block; font-size: 0.95rem; color: #fff; }
+        .item-text span { font-size: 0.8rem; color: var(--text-muted); }
+
+        .calc-box { background: #0f172a; padding: 15px; border-radius: 6px; border: 1px dashed var(--border-color); margin-top: 15px; }
+        .calc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9rem; }
+        
+        .result-badge { text-align: center; padding: 15px; border-radius: 6px; font-weight: bold; font-size: 1.2rem; text-transform: uppercase; margin-top: 15px; }
+        .status-rejected { background-color: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .status-approved { background-color: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+        button.btn-primary { width: 100%; background: var(--accent-blue); color: #fff; border: none; padding: 12px; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button.btn-primary:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Central de Triangulação & EV+</h1>
+        <p>Validação de Odds e Filtro Multiplataforma para Apostas Esportivas</p>
+    </header>
+
+    <!-- 1. Dados da Partida -->
+    <div class="card">
+        <div class="card-title">1. Dados da Partida & Atalhos Rápidos</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Time Mandante</label>
+                <input type="text" id="homeTeam" placeholder="Ex: Flamengo">
+            </div>
+            <div class="form-group">
+                <label>Time Visitante</label>
+                <input type="text" id="awayTeam" placeholder="Ex: Palmeiras">
+            </div>
+            <div class="form-group">
+                <label>Mercado Alvo</label>
+                <select id="marketType" onchange="updateMarketRequirements()">
+                    <option value="1X2">1X2 / Resultado Final</option>
+                    <option value="BTTS">Ambas Marcam (BTTS Sim)</option>
+                    <option value="OVER25">Over 2.5 Gols</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Odd Oferecida pela Casa</label>
+                <input type="number" step="0.01" id="bookieOdd" placeholder="Ex: 1.95" oninput="calculateEV()">
+            </div>
+        </div>
+
+        <div class="quick-links">
+            <span style="font-size:0.8rem; color: var(--text-muted); width:100%; margin-top:5px;">Abrir pesquisas diretamente:</span>
+            <a href="#" id="linkBetmines" target="_blank" class="btn-link" onclick="openTool('betmines')">🔍 Buscar no BetMines</a>
+            <a href="#" id="linkSofascore" target="_blank" class="btn-link" onclick="openTool('sofascore')">📊 Buscar no SofaScore</a>
+            <a href="#" id="linkFbref" target="_blank" class="btn-link" onclick="openTool('fbref')">📈 Buscar no FBref</a>
+            <a href="#" id="linkOddsPortal" target="_blank" class="btn-link" onclick="openTool('oddsportal')">📉 Dropping Odds (OddsPortal)</a>
+        </div>
+    </div>
+
+    <!-- 2. Checklist Dinâmico -->
+    <div class="card">
+        <div class="card-title">2. Peneira dos 3 Filtros (Triangulação)</div>
+        <div id="checklistContainer">
+            <!-- Renderizado via JavaScript -->
+        </div>
+    </div>
+
+    <!-- 3. Análise de EV+ e Resultado -->
+    <div class="card">
+        <div class="card-title">3. Cálculo de Valor Esperado (EV+)</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Sua Probabilidade Estimada (%)</label>
+                <input type="number" id="estimatedProb" placeholder="Ex: 58" min="1" max="99" oninput="calculateEV()">
+            </div>
+        </div>
+
+        <div class="calc-box">
+            <div class="calc-row">
+                <span>Odd Mínima Justa (Sem Margem):</span>
+                <strong id="fairOddDisplay">1.00</strong>
+            </div>
+            <div class="calc-row">
+                <span>Valor Esperado Calculado (EV):</span>
+                <strong id="evDisplay">0.00%</strong>
+            </div>
+        </div>
+
+        <div id="finalStatus" class="result-badge status-rejected">
+            Aposta Não Aprovada (Peneira Incompleta)
+        </div>
+    </div>
+</div>
+
+<script>
+    const marketRules = {
+        '1X2': [
+            { id: 'f1', tool: 'BetMines', title: 'Probabilidade Algorítmica ≥ 60%', desc: 'Algoritmo aponta favoritismo claro e time vem em boa sequência.' },
+            { id: 'f2', tool: 'FBref / Flashscore', title: 'Aproveitamento Casa x Fora Alinhado', desc: 'Mandante forte em casa vs Visitante fraco fora + xG Criado > 1.50.' },
+            { id: 'f3', tool: 'SofaScore', title: 'Escalação Titular Confirmada', desc: 'Sem desfalque do goleiro titular ou dos 2 principais nomes do time.' }
+        ],
+        'BTTS': [
+            { id: 'f1', tool: 'BetMines', title: 'Probabilidade BTTS ≥ 65%', desc: 'Mínimo de 3 dos últimos 5 jogos com resultado Ambas Marcam.' },
+            { id: 'f2', tool: 'FBref / Flashscore', title: 'Taxa de Marcador ≥ 75%', desc: 'Mandante marca em casa e Visitante marca fora em 75%+ dos jogos.' },
+            { id: 'f3', tool: 'SofaScore', title: 'Ataques Titulares + Grandes Chances ≥ 3.5', desc: 'Artilheiros em campo e média alta de criação de chances de gol.' }
+        ],
+        'OVER25': [
+            { id: 'f1', tool: 'BetMines', title: 'Probabilidade Over 2.5 ≥ 65%', desc: 'Média de gols alta nas últimas rodadas para ambos.' },
+            { id: 'f2', tool: 'FBref / Flashscore', title: 'Média Combinada > 2.80 Gols', desc: '(Gols Pró Mandante + Gols Sofridos Visitante) acima de 2.80.' },
+            { id: 'f3', tool: 'SofaScore', title: 'Clima & Gramado Favoráveis', desc: 'Sem chuva pesada, sem campo encharcado e ataques completos.' }
+        ]
+    };
+
+    function updateMarketRequirements() {
+        const mType = document.getElementById('marketType').value;
+        const container = document.getElementById('checklistContainer');
+        container.innerHTML = '';
+
+        marketRules[mType].forEach(rule => {
+            container.innerHTML += `
+                <div class="checklist-item">
+                    <input type="checkbox" id="${rule.id}" onchange="evaluateEntry()">
+                    <div class="item-text">
+                        <strong>[${rule.tool}] ${rule.title}</strong>
+                        <span>${rule.desc}</span>
+                    </div>
+                </div>
+            `;
+        });
+        evaluateEntry();
+    }
+
+    function calculateEV() {
+        const odd = parseFloat(document.getElementById('bookieOdd').value) || 0;
+        const prob = parseFloat(document.getElementById('estimatedProb').value) || 0;
+
+        if (odd > 1 && prob > 0) {
+            const fairOdd = (100 / prob).toFixed(2);
+            const ev = (((prob / 100) * odd) - 1) * 100;
+
+            document.getElementById('fairOddDisplay').innerText = fairOdd;
+            document.getElementById('evDisplay').innerText = ev.toFixed(2) + '%';
+            document.getElementById('evDisplay').style.color = ev > 0 ? '#10b981' : '#ef4444';
+        } else {
+            document.getElementById('fairOddDisplay').innerText = '1.00';
+            document.getElementById('evDisplay').innerText = '0.00%';
+            document.getElementById('evDisplay').style.color = '#fff';
+        }
+        evaluateEntry();
+    }
+
+    function evaluateEntry() {
+        const f1 = document.getElementById('f1')?.checked || false;
+        const f2 = document.getElementById('f2')?.checked || false;
+        const f3 = document.getElementById('f3')?.checked || false;
+        
+        const odd = parseFloat(document.getElementById('bookieOdd').value) || 0;
+        const prob = parseFloat(document.getElementById('estimatedProb').value) || 0;
+        const ev = (((prob / 100) * odd) - 1) * 100;
+
+        const statusBox = document.getElementById('finalStatus');
+
+        if (f1 && f2 && f3 && ev > 0 && odd >= 1.70) {
+            statusBox.className = 'result-badge status-approved';
+            statusBox.innerText = '✅ ENTRADA APROVADA COM VALOR (EV+)';
+        } else {
+            statusBox.className = 'result-badge status-rejected';
+            let reason = 'Aposta Recusada: ';
+            if (!f1 || !f2 || !f3) reason += 'Filtros Incompletos | ';
+            if (odd < 1.70) reason += 'Odd Muito Baixa (< 1.70) | ';
+            if (ev <= 0) reason += 'Sem Valor Esperado (EV ≤ 0)';
+            statusBox.innerText = '❌ ' + reason;
+        }
+    }
+
+    function openTool(tool) {
+        const home = encodeURIComponent(document.getElementById('homeTeam').value || '');
+        const away = encodeURIComponent(document.getElementById('awayTeam').value || '');
+        const query = `${home} ${away}`;
+
+        let url = '';
+        if (tool === 'betmines') url = `https://www.google.com/search?q=${query}+betmines`;
+        if (tool === 'sofascore') url = `https://www.google.com/search?q=${query}+sofascore`;
+        if (tool === 'fbref') url = `https://www.google.com/search?q=${query}+fbref`;
+        if (tool === 'oddsportal') url = `https://www.google.com/search?q=${query}+oddsportal`;
+
+        window.open(url, '_blank');
+    }
+
+    // Inicializa os requisitos
+    updateMarketRequirements();
+</script>
+
+</body>
+</html>
